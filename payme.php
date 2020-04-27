@@ -94,13 +94,28 @@ function payme_config()
             'Default' => '',
             'Description' => 'PayMe Merchant Secret',
         ),
-        // a password field type allows for masked text input
+        // a text field 
         'seller_payme_id' => array(
             'FriendlyName' => 'Seller ID',
             'Type' => 'text',
             'Size' => '36',
             'Default' => '',
             'Description' => 'PayMe Seller ID',
+        ),
+        // a text field 
+        'seller_payme_id' => array(
+            'FriendlyName' => 'Seller ID',
+            'Type' => 'text',
+            'Size' => '36',
+            'Default' => '',
+            'Description' => 'PayMe Seller ID',
+        ),
+        'langpayme' => array(
+            'FriendlyName' => 'Language',
+            'Type' => 'text',
+            'Size' => '2',
+            'Default' => 'en',
+            'Description' => 'Default Language for PayMe en for English and he for Hebrew',
         ),
         // the yesno field type displays a single checkbox option
         'testMode' => array(
@@ -132,6 +147,9 @@ function merchantgateway_capture($params)
     $secretKey = $params['secretKey'];
     $testMode = $params['testMode'];
     $sellerID = $params['seller_payme_id'];
+    $langPayMe = $params['langpayme'];
+
+    
 
     // Invoice Parameters
     $invoiceId = $params['invoiceid'];
@@ -168,22 +186,39 @@ function merchantgateway_capture($params)
     $moduleName = $params['paymentmethod'];
     $whmcsVersion = $params['whmcsVersion'];
 
+    //sms and email notifications by PayMe
+    if($params['sale_send_notification'] == 'on') { 
+        $notifications = true;
+    }
+    else
+    {
+        $notifications = false;
+    }
+    
+    
     $postfields = [
         'seller_payme_id' => $sellerID,
-        'sub_price' => $amount,
-        'sub_currency' => $currencyCode,
-        'sub_description' => $description,
-        'sub_start_date' => date("d-m-Y"),
-        'sub_return_url' => $systemUrl . '/modules/gateways/callback/' . $moduleName . '.php',
+        'sale_price' => $amount,
+        'currency' => $currencyCode,
+        'installments' => 1,
+        'product_name' => $description,
+        'sale_send_notification' => $notifications,
+        'sale_email' => $email,
+        'sale_mobile' => $phone,
+        'sale_name' => $description,
+        'capture_buyer' => 1,
+        'buyer_perform_validation' => true,
+        'language' => $langPayMe,
+        'sale_return_url' => $systemUrl . '/modules/gateways/callback/' . $moduleName . '.php',
 
-    ];
-
+    ];    
     // perform API call to capture payment and interpret result
     if($params['testMode'] == 'on') { //testmode
-        $url = 'https://preprod.paymeservice.com/api/capture-sale';
+        $url = 'https://preprod.paymeservice.com/api/generate-sale';
     } 
-    else { // live mode
-        $url = 'https://ng.paymeservice.com/api/capture-sale';
+    else 
+    { // live mode
+        $url = 'https://ng.paymeservice.com/api/generate-sale';
     }
 
     $ch = curl_init();
@@ -202,7 +237,7 @@ function merchantgateway_capture($params)
     $data = json_decode($response);
 
 
-    if ($responseData->status == 1) {
+    if ($responseData->status_code == 6) {
         $returnData = [
             // 'success' if successful, otherwise 'declined', 'error' for failure
             'status' => 'success',
