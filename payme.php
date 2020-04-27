@@ -1,23 +1,27 @@
 <?php
 /**
- * WHMCS Sample Merchant Gateway Module
+ * WHMCS Sample Payment Gateway Module
  *
- * This sample file demonstrates how a merchant gateway module supporting
- * 3D Secure Authentication, Captures and Refunds can be structured.
+ * Payment Gateway modules allow you to integrate payment solutions with the
+ * WHMCS platform.
  *
- * If your merchant gateway does not support 3D Secure Authentication, you can
- * simply omit that function and the callback file from your own module.
+ * This sample file demonstrates how a payment gateway module for WHMCS should
+ * be structured and all supported functionality it can contain.
  *
  * Within the module itself, all functions must be prefixed with the module
  * filename, followed by an underscore, and then the function name. For this
- * example file, the filename is "merchantgateway" and therefore all functions
- * begin "merchantgateway_".
+ * example file, the filename is "payme" and therefore all functions
+ * begin "payme_".
+ *
+ * If your module or third party API does not support a given function, you
+ * should not define that function within your module. Only the _config
+ * function is required.
  *
  * For more information, please refer to the online documentation.
  *
  * @see https://developers.whmcs.com/payment-gateways/
  *
- * @copyright Copyright (c) WHMCS Limited 2019
+ * @copyright Copyright (c) WHMCS Limited 2017
  * @license http://www.whmcs.com/license/ WHMCS Eula
  */
 
@@ -35,11 +39,13 @@ if (!defined("WHMCS")) {
  *
  * @return array
  */
-function merchantgateway_MetaData()
+function payme_MetaData()
 {
     return array(
-        'DisplayName' => 'Sample Merchant Gateway Module',
+        'DisplayName' => 'PayMe',
         'APIVersion' => '1.1', // Use API Version 1.1
+        'DisableLocalCredtCardInput' => true,
+        'TokenisedStorage' => false,
     );
 }
 
@@ -61,26 +67,24 @@ function merchantgateway_MetaData()
  * Examples of each field type and their possible configuration parameters are
  * provided in the sample function below.
  *
- * @see https://developers.whmcs.com/payment-gateways/configuration/
- *
  * @return array
  */
-function merchantgateway_config()
+function payme_config()
 {
     return array(
         // the friendly display name for a payment gateway should be
         // defined here for backwards compatibility
         'FriendlyName' => array(
             'Type' => 'System',
-            'Value' => 'Sample Merchant Gateway Module',
+            'Value' => 'PayMe',
         ),
         // a text field type allows for single line text input
         'accountID' => array(
-            'FriendlyName' => 'Account ID',
+            'FriendlyName' => 'Client Key',
             'Type' => 'text',
             'Size' => '25',
             'Default' => '',
-            'Description' => 'Enter your account ID here',
+            'Description' => 'PayMe Client Key',
         ),
         // a password field type allows for masked text input
         'secretKey' => array(
@@ -88,7 +92,15 @@ function merchantgateway_config()
             'Type' => 'password',
             'Size' => '25',
             'Default' => '',
-            'Description' => 'Enter secret key here',
+            'Description' => 'PayMe Merchant Secret',
+        ),
+        // a password field type allows for masked text input
+        'seller_payme_id' => array(
+            'FriendlyName' => 'Seller ID',
+            'Type' => 'text',
+            'Size' => '36',
+            'Default' => '',
+            'Description' => 'PayMe Seller ID',
         ),
         // the yesno field type displays a single checkbox option
         'testMode' => array(
@@ -96,125 +108,7 @@ function merchantgateway_config()
             'Type' => 'yesno',
             'Description' => 'Tick to enable test mode',
         ),
-        // the dropdown field type renders a select menu of options
-        'dropdownField' => array(
-            'FriendlyName' => 'Dropdown Field',
-            'Type' => 'dropdown',
-            'Options' => array(
-                'option1' => 'Display Value 1',
-                'option2' => 'Second Option',
-                'option3' => 'Another Option',
-            ),
-            'Description' => 'Choose one',
-        ),
-        // the radio field type displays a series of radio button options
-        'radioField' => array(
-            'FriendlyName' => 'Radio Field',
-            'Type' => 'radio',
-            'Options' => 'First Option,Second Option,Third Option',
-            'Description' => 'Choose your option!',
-        ),
-        // the textarea field type allows for multi-line text input
-        'textareaField' => array(
-            'FriendlyName' => 'Textarea Field',
-            'Type' => 'textarea',
-            'Rows' => '3',
-            'Cols' => '60',
-            'Description' => 'Freeform multi-line text input field',
-        ),
     );
-}
-
-/**
- * Perform 3D Authentication.
- *
- * Called upon checkout using a credit card.
- *
- * Optional: Exclude this function if your merchant gateway does not support
- * 3D Secure Authentication.
- *
- * @param array $params Payment Gateway Module Parameters
- *
- * @see https://developers.whmcs.com/payment-gateways/3d-secure/
- *
- * @return string 3D Secure Form
- */
-function merchantgateway_3dsecure($params)
-{
-    // Gateway Configuration Parameters
-    $accountId = $params['accountID'];
-    $secretKey = $params['secretKey'];
-    $testMode = $params['testMode'];
-    $dropdownField = $params['dropdownField'];
-    $radioField = $params['radioField'];
-    $textareaField = $params['textareaField'];
-
-    // Invoice Parameters
-    $invoiceId = $params['invoiceid'];
-    $description = $params["description"];
-    $amount = $params['amount'];
-    $currencyCode = $params['currency'];
-
-    // Credit Card Parameters
-    $cardType = $params['cardtype'];
-    $cardNumber = $params['cardnum'];
-    $cardExpiry = $params['cardexp'];
-    $cardStart = $params['cardstart'];
-    $cardIssueNumber = $params['cardissuenum'];
-    $cardCvv = $params['cccvv'];
-
-    // Client Parameters
-    $firstname = $params['clientdetails']['firstname'];
-    $lastname = $params['clientdetails']['lastname'];
-    $email = $params['clientdetails']['email'];
-    $address1 = $params['clientdetails']['address1'];
-    $address2 = $params['clientdetails']['address2'];
-    $city = $params['clientdetails']['city'];
-    $state = $params['clientdetails']['state'];
-    $postcode = $params['clientdetails']['postcode'];
-    $country = $params['clientdetails']['country'];
-    $phone = $params['clientdetails']['phonenumber'];
-
-    // System Parameters
-    $companyName = $params['companyname'];
-    $systemUrl = $params['systemurl'];
-    $returnUrl = $params['returnurl'];
-    $langPayNow = $params['langpaynow'];
-    $moduleDisplayName = $params['name'];
-    $moduleName = $params['paymentmethod'];
-    $whmcsVersion = $params['whmcsVersion'];
-
-    // Return HTML form for redirecting user to 3D Auth.
-
-    $url = 'https://www.demopaymentgateway.com/do.3dauth';
-
-    $postfields = array(
-        'account_id' => $accountId,
-        'invoice_id' => $invoiceId,
-        'amount' => $amount,
-        'currency' => $currencyCode,
-        'card_type' => $cardType,
-        'card_number' => $cardNumber,
-        'card_expiry_month' => substr($cardExpiry, 0, 2),
-        'card_expiry_year' => substr($cardExpiry, 2, 2),
-        'card_cvv' => $cardCvv,
-        'card_holder_name' => $firstname . ' ' . $lastname,
-        'card_holder_address' => $address1,
-        'card_holder_city' => $city,
-        'card_holder_state' => $state,
-        'card_holder_zip' => $postcode,
-        'card_holder_country' => $country,
-        'return_url' => $systemUrl . '/modules/gateways/callback/' . $moduleName . '.php',
-    );
-
-    $htmlOutput = '<form method="post" action="' . $url . '">';
-    foreach ($postfields as $k => $v) {
-        $htmlOutput .= '<input type="hidden" name="' . $k . '" value="' . urlencode($v) . '" />';
-    }
-    $htmlOutput .= '<input type="submit" value="' . $langPayNow . '" />';
-    $htmlOutput .= '</form>';
-
-    return $htmlOutput;
 }
 
 /**
@@ -237,9 +131,7 @@ function merchantgateway_capture($params)
     $accountId = $params['accountID'];
     $secretKey = $params['secretKey'];
     $testMode = $params['testMode'];
-    $dropdownField = $params['dropdownField'];
-    $radioField = $params['radioField'];
-    $textareaField = $params['textareaField'];
+    $sellerID = $params['seller_payme_id'];
 
     // Invoice Parameters
     $invoiceId = $params['invoiceid'];
@@ -276,7 +168,39 @@ function merchantgateway_capture($params)
     $moduleName = $params['paymentmethod'];
     $whmcsVersion = $params['whmcsVersion'];
 
+    $postfields = [
+        'seller_payme_id' => $sellerID,
+        'sub_price' => $amount,
+        'sub_currency' => $currencyCode,
+        'sub_description' => $description,
+        'sub_start_date' => date("d-m-Y"),
+        'sub_return_url' => $systemUrl . '/modules/gateways/callback/' . $moduleName . '.php',
+
+    ];
+
     // perform API call to capture payment and interpret result
+    if($params['testMode'] == 'on') { //testmode
+        $url = 'https://preprod.paymeservice.com/api/capture-sale';
+    } 
+    else { // live mode
+        $url = 'https://ng.paymeservice.com/api/capture-sale';
+    }
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+    curl_setopt($ch, CURLOPT_HEADER, FALSE);
+    curl_setopt($ch, CURLOPT_POST, TRUE);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postfields));
+
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+        "Content-Type: application/json"
+      ));
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    $data = json_decode($response);
+
 
     if ($responseData->status == 1) {
         $returnData = [
@@ -302,8 +226,6 @@ function merchantgateway_capture($params)
 
     return $returnData;
 }
-
-
 /**
  * Refund transaction.
  *
@@ -315,15 +237,12 @@ function merchantgateway_capture($params)
  *
  * @return array Transaction response status
  */
-function merchantgateway_refund($params)
+function payme_refund($params)
 {
     // Gateway Configuration Parameters
     $accountId = $params['accountID'];
     $secretKey = $params['secretKey'];
     $testMode = $params['testMode'];
-    $dropdownField = $params['dropdownField'];
-    $radioField = $params['radioField'];
-    $textareaField = $params['textareaField'];
 
     // Transaction Parameters
     $transactionIdToRefund = $params['transid'];
@@ -360,6 +279,48 @@ function merchantgateway_refund($params)
         // Unique Transaction ID for the refund transaction
         'transid' => $refundTransactionId,
         // Optional fee amount for the fee value refunded
-        'fee' => $feeAmount,
+        'fees' => $feeAmount,
+    );
+}
+
+/**
+ * Cancel subscription.
+ *
+ * If the payment gateway creates subscriptions and stores the subscription
+ * ID in tblhosting.subscriptionid, this function is called upon cancellation
+ * or request by an admin user.
+ *
+ * @param array $params Payment Gateway Module Parameters
+ *
+ * @see https://developers.whmcs.com/payment-gateways/subscription-management/
+ *
+ * @return array Transaction response status
+ */
+function payme_cancelSubscription($params)
+{
+    // Gateway Configuration Parameters
+    $accountId = $params['accountID'];
+    $secretKey = $params['secretKey'];
+    $secretKey = $params['seller_payme_id'];
+    $testMode = $params['testMode'];
+
+    // Subscription Parameters
+    $subscriptionIdToCancel = $params['subscriptionID'];
+
+    // System Parameters
+    $companyName = $params['companyname'];
+    $systemUrl = $params['systemurl'];
+    $langPayNow = $params['langpaynow'];
+    $moduleDisplayName = $params['name'];
+    $moduleName = $params['paymentmethod'];
+    $whmcsVersion = $params['whmcsVersion'];
+
+    // perform API call to cancel subscription and interpret result
+
+    return array(
+        // 'success' if successful, any other value for failure
+        'status' => 'success',
+        // Data to be recorded in the gateway log - can be a string or array
+        'rawdata' => $responseData,
     );
 }

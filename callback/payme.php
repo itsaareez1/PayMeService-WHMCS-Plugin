@@ -1,29 +1,26 @@
 <?php
 /**
- * WHMCS Merchant Gateway 3D Secure Callback File
+ * WHMCS Sample Payment Callback File
  *
- * The purpose of this file is to demonstrate how to handle the return post
- * from a 3D Secure Authentication process.
+ * This sample file demonstrates how a payment gateway callback should be
+ * handled within WHMCS.
  *
  * It demonstrates verifying that the payment gateway module is active,
  * validating an Invoice ID, checking for the existence of a Transaction ID,
  * Logging the Transaction for debugging and Adding Payment to an Invoice.
  *
- * Users are expected to be redirected to this file as part of the 3D checkout
- * flow so it also demonstrates redirection to the invoice upon completion.
- *
  * For more information, please refer to the online documentation.
  *
  * @see https://developers.whmcs.com/payment-gateways/callbacks/
  *
- * @copyright Copyright (c) WHMCS Limited 2019
+ * @copyright Copyright (c) WHMCS Limited 2017
  * @license http://www.whmcs.com/license/ WHMCS Eula
  */
 
 // Require libraries needed for gateway module functions.
 require_once __DIR__ . '/../../../init.php';
-App::load_function('gateway');
-App::load_function('invoice');
+require_once __DIR__ . '/../../../includes/gatewayfunctions.php';
+require_once __DIR__ . '/../../../includes/invoicefunctions.php';
 
 // Detect module name from filename.
 $gatewayModuleName = basename(__FILE__, '.php');
@@ -55,7 +52,7 @@ $transactionStatus = $success ? 'Success' : 'Failure';
  * way of a shared secret which is used to build and compare a hash.
  */
 $secretKey = $gatewayParams['secretKey'];
-if ($hash != md5($secretKey . $invoiceId . $transactionId . $paymentAmount)) {
+if ($hash != md5($invoiceId . $transactionId . $paymentAmount . $secretKey)) {
     $transactionStatus = 'Hash Verification Failure';
     $success = false;
 }
@@ -101,8 +98,6 @@ checkCbTransID($transactionId);
  */
 logTransaction($gatewayParams['name'], $_POST, $transactionStatus);
 
-$paymentSuccess = false;
-
 if ($success) {
 
     /**
@@ -124,17 +119,4 @@ if ($success) {
         $gatewayModuleName
     );
 
-    $paymentSuccess = true;
-
 }
-
-/**
- * Redirect to invoice.
- *
- * Performs redirect back to the invoice upon completion of the 3D Secure
- * process displaying the transaction result along with the invoice.
- *
- * @param int $invoiceId        Invoice ID
- * @param bool $paymentSuccess  Payment status
- */
-callback3DSecureRedirect($invoiceId, $paymentSuccess);
