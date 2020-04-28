@@ -44,8 +44,6 @@ function payme_MetaData()
     return array(
         'DisplayName' => 'PayMe',
         'APIVersion' => '1.1', // Use API Version 1.1
-        'DisableLocalCredtCardInput' => true,
-        'TokenisedStorage' => false,
     );
 }
 
@@ -78,34 +76,10 @@ function payme_config()
             'Type' => 'System',
             'Value' => 'PayMe',
         ),
-        // a text field type allows for single line text input
-        'accountID' => array(
-            'FriendlyName' => 'Client Key',
-            'Type' => 'text',
-            'Size' => '25',
-            'Default' => '',
-            'Description' => 'PayMe Client Key',
-        ),
-        // a password field type allows for masked text input
-        'secretKey' => array(
-            'FriendlyName' => 'Secret Key',
+        // a text field 
+        'seller_payme_id' => array(
+            'FriendlyName' => 'Seller ID',
             'Type' => 'password',
-            'Size' => '25',
-            'Default' => '',
-            'Description' => 'PayMe Merchant Secret',
-        ),
-        // a text field 
-        'seller_payme_id' => array(
-            'FriendlyName' => 'Seller ID',
-            'Type' => 'text',
-            'Size' => '36',
-            'Default' => '',
-            'Description' => 'PayMe Seller ID',
-        ),
-        // a text field 
-        'seller_payme_id' => array(
-            'FriendlyName' => 'Seller ID',
-            'Type' => 'text',
             'Size' => '36',
             'Default' => '',
             'Description' => 'PayMe Seller ID',
@@ -115,7 +89,7 @@ function payme_config()
             'Type' => 'text',
             'Size' => '2',
             'Default' => 'en',
-            'Description' => 'Default Language for PayMe en for English and he for Hebrew',
+            'Description' => '\'en\' for English and \'he\' for Hebrew',
         ),
         // the yesno field type displays a single checkbox option
         'testMode' => array(
@@ -140,15 +114,12 @@ function payme_config()
  *
  * @return array Transaction response status
  */
-function merchantgateway_capture($params)
+function payme_capture($params)
 {
     // Gateway Configuration Parameters
-    $accountId = $params['accountID'];
-    $secretKey = $params['secretKey'];
-    $testMode = $params['testMode'];
     $sellerID = $params['seller_payme_id'];
     $langPayMe = $params['langpayme'];
-
+    $testMode = $params['testMode'];
     
 
     // Invoice Parameters
@@ -185,79 +156,122 @@ function merchantgateway_capture($params)
     $moduleDisplayName = $params['name'];
     $moduleName = $params['paymentmethod'];
     $whmcsVersion = $params['whmcsVersion'];
-
-    //sms and email notifications by PayMe
-    if($params['sale_send_notification'] == 'on') { 
-        $notifications = true;
-    }
-    else
-    {
-        $notifications = false;
-    }
     
-    
-    $postfields = [
-        'seller_payme_id' => $sellerID,
-        'sale_price' => $amount,
-        'currency' => $currencyCode,
-        'installments' => 1,
-        'product_name' => $description,
-        'sale_send_notification' => $notifications,
-        'sale_email' => $email,
-        'sale_mobile' => $phone,
-        'sale_name' => $description,
-        'capture_buyer' => 1,
-        'buyer_perform_validation' => true,
-        'language' => $langPayMe,
-        'sale_return_url' => $systemUrl . '/modules/gateways/callback/' . $moduleName . '.php',
-
-    ];    
-    // perform API call to capture payment and interpret result
+    //switch modes
     if($params['testMode'] == 'on') { //testmode
-        $url = 'https://preprod.paymeservice.com/api/generate-sale';
+        $url = 'https://preprod.paymeservice.com/api/generate-sale?first_name='.$firstname.'&last_name='.$lastname.'&phone='.$phone.'&email='.$email.'&zip_code='.$postcode;
     } 
     else 
     { // live mode
-        $url = 'https://ng.paymeservice.com/api/generate-sale';
+        $url = 'https://ng.paymeservice.com/api/generate-sale?first_name='.$firstname.'&last_name='.$lastname.'&phone='.$phone.'&email='.$email.'&zip_code='.$postcode;
     }
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
-    curl_setopt($ch, CURLOPT_HEADER, FALSE);
-    curl_setopt($ch, CURLOPT_POST, TRUE);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postfields));
+    $gatewayid = $params['gatewayid'];
 
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-        "Content-Type: application/json"
-      ));
-    $response = curl_exec($ch);
-    curl_close($ch);
+    if ($gatewayid){
 
-    $data = json_decode($response);
+        $postfield = [
+            'seller_payme_id' => $sellerID,
+            'sale_price' => $amount,
+            'currency' => $currencyCode,
+            'installments' => 1,
+            'product_name' => $description,
+            'sale_email' => $email,
+            'sale_mobile' => $phone,
+            'sale_name' => $description,
+            'buyer_key' => $gatewayid,
+            'buyer_perform_validation' => true,
+            'language' => $langPayMe,
+            'sale_return_url' => $systemUrl . '/modules/gateways/callback/' . $moduleName . '.php',
+    
+        ];    
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+        curl_setopt($ch, CURLOPT_HEADER, FALSE);
+        curl_setopt($ch, CURLOPT_POST, TRUE);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postfield));
+    
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            "Content-Type: application/json"
+          ));
+        $response = curl_exec($ch);
+        curl_close($ch);
+    
+        $responseData = json_decode($response);
 
 
-    if ($responseData->status_code == 6) {
-        $returnData = [
-            // 'success' if successful, otherwise 'declined', 'error' for failure
+        return [
             'status' => 'success',
-            // Data to be recorded in the gateway log - can be a string or array
-            'rawdata' => $responseData,
-            // Unique Transaction ID for the capture transaction
-            'transid' => $transactionId,
-            // Optional fee amount for the fee value refunded
-            'fee' => $feeAmount,
-        ];
-    } else {
-        $returnData = [
-            // 'success' if successful, otherwise 'declined', 'error' for failure
-            'status' => 'declined',
-            // When not successful, a specific decline reason can be logged in the Transaction History
-            'declinereason' => 'Credit card declined. Please contact issuer.',
-            // Data to be recorded in the gateway log - can be a string or array
-            'rawdata' => $responseData,
+            'transid' => $response['transaction_id'],
+            'rawdata' => $response,
         ];
     }
+    else
+    {
+        $postfields = [
+            'seller_payme_id' => $sellerID,
+            'sale_price' => $amount,
+            'currency' => $currencyCode,
+            'installments' => 1,
+            'product_name' => $description,
+            'sale_email' => $email,
+            'sale_mobile' => $phone,
+            'sale_name' => $description,
+            'capture_buyer' => 1,
+            'buyer_perform_validation' => true,
+            'language' => $langPayMe,
+            'sale_return_url' => $systemUrl . '/modules/gateways/callback/' . $moduleName . '.php',
+    
+        ];    
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+        curl_setopt($ch, CURLOPT_HEADER, FALSE);
+        curl_setopt($ch, CURLOPT_POST, TRUE);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postfields));
+    
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            "Content-Type: application/json"
+          ));
+        $response = curl_exec($ch);
+        curl_close($ch);
+    
+        $responseData = json_decode($response);
+    
+    
+        if ($responseData->status_code == 0) {
+            if ($responseData->sale_status == "completed")
+            {
+                $returnData = [
+                    // 'success' if successful, otherwise 'declined', 'error' for failure
+                    'status' => 'success',
+                    // Data to be recorded in the gateway log - can be a string or array
+                    'rawdata' => $responseData,
+                    // Unique Transaction ID for the capture transaction
+                    'transid' => $responseData->transaction_id,
+                    // Optional fee amount for the fee value refunded
+                    'fee' => $responseData->price/100,
+                    //token returned by payment gateway
+                    'gatewayid' => $responseData->buyer_key
+                ];    
+            }
+        } else {
+            $returnData = [
+                // 'success' if successful, otherwise 'declined', 'error' for failure
+                'status' => 'declined',
+                // When not successful, a specific decline reason can be logged in the Transaction History
+                'declinereason' => 'Credit card declined. Please contact issuer.',
+                // Data to be recorded in the gateway log - can be a string or array
+                'rawdata' => $responseData,
+            ];
+        }
+    
+    }
+
+    // perform API call to capture payment and interpret result
 
     return $returnData;
 }
@@ -275,8 +289,8 @@ function merchantgateway_capture($params)
 function payme_refund($params)
 {
     // Gateway Configuration Parameters
-    $accountId = $params['accountID'];
-    $secretKey = $params['secretKey'];
+    $sellerID = $params['seller_payme_id'];
+    $langPayMe = $params['langpayme'];
     $testMode = $params['testMode'];
 
     // Transaction Parameters
@@ -304,7 +318,29 @@ function payme_refund($params)
     $moduleName = $params['paymentmethod'];
     $whmcsVersion = $params['whmcsVersion'];
 
-    // perform API call to initiate refund and interpret result
+        //switch modes
+    if($params['testMode'] == 'on') { //testmode
+        $url = 'https://preprod.paymeservice.com/api/generate-sale';
+    } 
+    else 
+    { // live mode
+        $url = 'https://ng.paymeservice.com/api/generate-sale';
+    }    
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+    curl_setopt($ch, CURLOPT_HEADER, FALSE);
+    curl_setopt($ch, CURLOPT_POST, TRUE);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postfields));
+
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+        "Content-Type: application/json"
+      ));
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    $data = json_decode($response);
 
     return array(
         // 'success' if successful, otherwise 'declined', 'error' for failure
@@ -315,47 +351,5 @@ function payme_refund($params)
         'transid' => $refundTransactionId,
         // Optional fee amount for the fee value refunded
         'fees' => $feeAmount,
-    );
-}
-
-/**
- * Cancel subscription.
- *
- * If the payment gateway creates subscriptions and stores the subscription
- * ID in tblhosting.subscriptionid, this function is called upon cancellation
- * or request by an admin user.
- *
- * @param array $params Payment Gateway Module Parameters
- *
- * @see https://developers.whmcs.com/payment-gateways/subscription-management/
- *
- * @return array Transaction response status
- */
-function payme_cancelSubscription($params)
-{
-    // Gateway Configuration Parameters
-    $accountId = $params['accountID'];
-    $secretKey = $params['secretKey'];
-    $secretKey = $params['seller_payme_id'];
-    $testMode = $params['testMode'];
-
-    // Subscription Parameters
-    $subscriptionIdToCancel = $params['subscriptionID'];
-
-    // System Parameters
-    $companyName = $params['companyname'];
-    $systemUrl = $params['systemurl'];
-    $langPayNow = $params['langpaynow'];
-    $moduleDisplayName = $params['name'];
-    $moduleName = $params['paymentmethod'];
-    $whmcsVersion = $params['whmcsVersion'];
-
-    // perform API call to cancel subscription and interpret result
-
-    return array(
-        // 'success' if successful, any other value for failure
-        'status' => 'success',
-        // Data to be recorded in the gateway log - can be a string or array
-        'rawdata' => $responseData,
     );
 }
