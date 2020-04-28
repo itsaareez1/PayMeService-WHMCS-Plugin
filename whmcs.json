@@ -1,0 +1,28 @@
+{
+    "schema": "1.0",
+    "type": "whmcs-gateways",
+    "name": "PayMe Arslan",
+    "license": "proprietary",
+    "category": "payments",
+    "description": {
+      "name": "PayMe Arslan",
+      "tagline": "PayMe Arslan is the #1 most recognised and widely used payment gateway.",
+      "long": "PayMe Arslan is the fast, easy, secure way to accept credit cards and PayPal online. Millions of users know and trust the PayPal payment solution online.",
+      "features": [
+        "Automatic recurring subscription billing",
+        "Subscription management automation & one-click refunds",
+        "Integrates with PayMe Arslan Website Payments Standard"
+      ]
+    },
+    "support": {
+      "homepage": "https:\/\/www.paymeservice.com\/",
+      "docs_url": "https:\/\/https://paymeapi.docs.apiary.io\/"
+    },
+    "authors": [
+      {
+        "name": "Arslan ud Din Shafiq",
+        "homepage": "https:\/\/www.itdevsols.com\/"
+      }
+    ]
+  }
+  
