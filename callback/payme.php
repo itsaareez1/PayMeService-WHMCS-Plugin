@@ -37,29 +37,20 @@ if (!$gatewayParams['type']) {
 
 
 // Retrieve data returned in redirect
+
+
+$clientID = $_SESSION['uid'];
+
 $success = isset($_REQUEST['status_code']) ? $_REQUEST['status_code'] : '';
 $transactionId = isset($_REQUEST['transaction_id']) ? $_REQUEST['transaction_id'] : '';
+$invoiceId = $transactionId;
 $currencyCode = isset($_REQUEST['currency']) ? $_REQUEST['currency'] : '';
-$amount = isset($_REQUEST['price']) ? $_REQUEST['price'] : '';
+$am = isset($_REQUEST['price']) ? $_REQUEST['price'] : '';
+$amount = $am/100;
 $buyer_key = isset($_REQUEST['buyer_key']) ? $_REQUEST['buyer_key'] : '';
-$cardLastFour = isset($_REQUEST['card_last_four']) ? $_REQUEST['card_last_four'] : '';
-$cardType = isset($_REQUEST['card_type']) ? $_REQUEST['card_type'] : '';
-$cardExpiryDate = isset($_REQUEST['card_expiry_date']) ? $_REQUEST['card_expiry_date'] : '';
-$cardToken = isset($_REQUEST['card_token']) ? $_REQUEST['card_token'] : '';
-$verificationHash = isset($_REQUEST['verification_hash']) ? $_REQUEST['verification_hash'] : '';
-$payMethodId = isset($_REQUEST['custom_reference']) ? (int) $_REQUEST['custom_reference'] : 0;
-
-
-// // Varies per payment gateway
-// $success = $_POST["x_status"];
-// $invoiceId = $_POST["x_invoice_id"];
-// $transactionId = $_POST["x_trans_id"];
-// $paymentAmount = $_POST["x_amount"];
-// $paymentFee = $_POST["x_fee"];
-// $hash = $_POST["x_hash"];
-
-// $transactionStatus = $success ? 'Success' : 'Failure';
-
+$buyer_card_mask = isset($_REQUEST['buyer_card_mask']) ? $_REQUEST['buyer_card_mask'] : '';
+$buyer_card_exp = isset($_REQUEST['buyer_card_exp']) ? $_REQUEST['buyer_card_exp'] : '';
+$cardType = isset($_REQUEST['payme_transaction_card_brand']) ? $_REQUEST['payme_transaction_card_brand'] : '';
 /**
  * Validate callback authenticity.
  *
@@ -67,11 +58,11 @@ $payMethodId = isset($_REQUEST['custom_reference']) ? (int) $_REQUEST['custom_re
  * originated from them. In the case of our example here, this is achieved by
  * way of a shared secret which is used to build and compare a hash.
  */
-$secretKey = $gatewayParams['secretKey'];
-if ($hash != md5($invoiceId . $transactionId . $paymentAmount . $secretKey)) {
-    $transactionStatus = 'Hash Verification Failure';
-    $success = false;
-}
+// $secretKey = $gatewayParams['secretKey'];
+// if ($hash != md5($invoiceId . $transactionId . $paymentAmount . $secretKey)) {
+//     $transactionStatus = 'Hash Verification Failure';
+//     $success = false;
+// }
 
 /**
  * Validate Callback Invoice ID.
@@ -86,7 +77,6 @@ if ($hash != md5($invoiceId . $transactionId . $paymentAmount . $secretKey)) {
  * @param int $invoiceId Invoice ID
  * @param string $gatewayName Gateway Name
  */
-$invoiceId = checkCbInvoiceID($invoiceId, $gatewayParams['name']);
 
 /**
  * Check Callback Transaction ID.
@@ -98,7 +88,6 @@ $invoiceId = checkCbInvoiceID($invoiceId, $gatewayParams['name']);
  *
  * @param string $transactionId Unique Transaction ID
  */
-checkCbTransID($transactionId);
 
 /**
  * Log Transaction.
@@ -114,25 +103,21 @@ checkCbTransID($transactionId);
  */
 logTransaction($gatewayParams['name'], $_POST, $transactionStatus);
 
-if ($success) {
+if ($success == 0) {
 
-    /**
-     * Add Invoice Payment.
-     *
-     * Applies a payment transaction entry to the given invoice ID.
-     *
-     * @param int $invoiceId         Invoice ID
-     * @param string $transactionId  Transaction ID
-     * @param float $paymentAmount   Amount paid (defaults to full balance)
-     * @param float $paymentFee      Payment fee (optional)
-     * @param string $gatewayModule  Gateway module name
-     */
-    addInvoicePayment(
-        $invoiceId,
-        $transactionId,
-        $paymentAmount,
-        $paymentFee,
-        $gatewayModuleName
-    );
 
+    $invoiceId = checkCbInvoiceID($invoiceId, $gatewayParams['payme']);
+
+    logTransaction($gatewayParams['payme'], $_REQUEST, "Success");
+    invoiceSaveRemoteCard($invoiceId, substr($buyer_card_mask, -4), $cardType, $buyer_card_exp, $buyer_key);
+    addInvoicePayment($invoiceId, $transactionId, $amount, 'payme');
+    callback3DSecureRedirect($invoiceId, true);
 }
+else
+{
+    logTransaction($gatewayParams['payme'], $_REQUEST, "Failed");
+    sendMessage('Credit Card Payment Failed', $invoiceId);
+    callback3DSecureRedirect($invoiceId, false);
+}
+
+

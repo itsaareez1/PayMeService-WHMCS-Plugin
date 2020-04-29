@@ -164,13 +164,14 @@ function payme_remoteinput($params)
     }
 
     $data->seller_payme_id = $sellerID;
-    $data->sale_price = $amount;
+    $data->sale_price = $amount*100;
     $data->currency = $currencyCode;
     $data->product_name = $description;
     $data->installments = 1;
-    $data->sale_return_url = $systemUrl . 'modules/gateways/callback/payme.php';
+    $data->sale_callback_url = $systemUrl . 'modules/gateways/callback/payme.php';
     $data->capture_buyer = 1;
     $data->language = $langPayMe;
+    $data->transaction_id = $invoiceId;
     $jsonData = json_encode($data);
 
     $ch = curl_init();
@@ -263,73 +264,34 @@ function payme_capture($params)
     
     //switch modes
     if($params['testMode'] == 'on') { //testmode
-        $url = 'https://preprod.paymeservice.com/api/generate-sale?first_name='.$firstname.'&last_name='.$lastname.'&phone='.$phone.'&email='.$email.'&zip_code='.$postcode;
+        $url = 'https://preprod.paymeservice.com/api/generate-sale';
     } 
     else 
     { // live mode
-        $url = 'https://ng.paymeservice.com/api/generate-sale?first_name='.$firstname.'&last_name='.$lastname.'&phone='.$phone.'&email='.$email.'&zip_code='.$postcode;
+        $url = 'https://ng.paymeservice.com/api/generate-sale';
     }
 
     $gatewayid = $params['gatewayid'];
 
-    if ($gatewayid){
+    if ($gatewayid != ""){
 
-        $postfield = [
-            'seller_payme_id' => $sellerID,
-            'sale_price' => $amount,
-            'currency' => $currencyCode,
-            'installments' => 1,
-            'product_name' => $description,
-            'sale_email' => $email,
-            'sale_mobile' => $phone,
-            'sale_name' => $description,
-            'buyer_key' => $gatewayid,
-            'buyer_perform_validation' => true,
-            'language' => $langPayMe,
-            'sale_return_url' => $systemUrl . '/modules/gateways/callback/' . $moduleName . '.php',
-    
-        ];    
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
-        curl_setopt($ch, CURLOPT_HEADER, FALSE);
-        curl_setopt($ch, CURLOPT_POST, TRUE);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postfield));
-    
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-            "Content-Type: application/json"
-          ));
-        $response = curl_exec($ch);
-        curl_close($ch);
-    
-        $responseData = json_decode($response);
-
-
-        return [
-            'status' => 'success',
-            'transid' => $response['transaction_id'],
-            'rawdata' => $response,
-        ];
-    }
-    else
-    {
-        $data->seller_payme_id = $sellerID;
-        $data->sale_price = $amount;
-        $data->currency = $currencyCode;
-        $data->product_name = $description;
-        $data->transaction_id = $transid;
-        $data->installments = 1;
-        $data->sale_return_url = $sale_return_url;
-        $data->capture_buyer = 1;
-        $jsonData = json_encode($data);
+        $dat->seller_payme_id = $sellerID;
+        $dat->sale_price = $amount*100;
+        $dat->currency = $currencyCode;
+        $dat->product_name = $description;
+        $dat->installments = 1;
+        $data->sale_callback_url = $systemUrl . 'modules/gateways/callback/payme.php';
+        $dat->language = $langPayMe;
+        $dat->buyer_key = $gatewayid;
+        $data->transaction_id = $invoiceId;
+        $jsonDat = json_encode($dat);
 
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
         curl_setopt($ch, CURLOPT_HEADER, FALSE);        
         curl_setopt($ch, CURLOPT_POST, TRUE);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonDat);
         
         curl_setopt($ch, CURLOPT_HTTPHEADER, array(
           "Content-Type: application/json"
@@ -337,37 +299,137 @@ function payme_capture($params)
         
         $response = curl_exec($ch);
         curl_close($ch);
-
+    
         $responseData = json_decode($response);
-    
-    
+
         if ($responseData->status_code == 0) {
-            if ($responseData->sale_status == "completed")
-            {
-                $returnData = [
-                    // 'success' if successful, otherwise 'declined', 'error' for failure
-                    'status' => 'success',
-                    // Data to be recorded in the gateway log - can be a string or array
-                    'rawdata' => $responseData,
-                    // Unique Transaction ID for the capture transaction
-                    'transid' => $responseData->transaction_id,
-                    //token returned by payment gateway
-                    'gatewayid' => $responseData->buyer_key
-                ];    
-            }
-        } else {
-            $returnData = [
+            return [
                 // 'success' if successful, otherwise 'declined', 'error' for failure
-                'status' => 'declined',
-                // When not successful, a specific decline reason can be logged in the Transaction History
-                'declinereason' => $responseData->status_error_details,
+                'status' => 'success',
+                // The unique transaction id for the payment
+                'transid' => $response['transaction_id'],
                 // Data to be recorded in the gateway log - can be a string or array
-                'rawdata' => $responseData,
+                'rawdata' => $response,
             ];
         }
-    
+        else{
+
+            return [
+                // 'success' if successful, otherwise 'declined', 'error' for failure
+                'status' => 'declined',
+                // For declines, a decline reason can optionally be returned
+                'declinereason' => $response['decline_reason'],
+                // Data to be recorded in the gateway log - can be a string or array
+                'rawdata' => $response,
+            ];
+        }
     }
-    return $returnData;
+    else{
+        return [
+            'status' => 'declined',
+            'decline_message' => 'No Remote Token',
+        ];
+    }
+}
+
+/**
+ * Remote update.
+ *
+ * Called when a pay method is requested to be updated.
+ *
+ * The expected return of this function is direct HTML output. It provides
+ * more flexibility than the remote input function by not restricting the
+ * return to a form that is posted into an iframe. We still recommend using
+ * an iframe where possible and this sample demonstrates use of an iframe,
+ * but the update can sometimes be handled by way of a modal, popup or
+ * other such facility.
+ *
+ * @param array $params Payment Gateway Module Parameters
+ *
+ * @see https://developers.whmcs.com/payment-gateways/remote-input-gateway/
+ *
+ * @return array
+ */
+function payme_remoteupdate($params)
+{
+    // Gateway Configuration Parameters
+    $sellerID = $params['seller_payme_id'];
+    $langPayMe = $params['langpayme'];
+    $testMode = $params['testMode'];
+
+    // Invoice Parameters
+    $invoiceId = $params['invoiceid'];
+    $description = $params['description'];
+    $amount = $params['amount'];
+    $currencyCode = $params['currency'];
+
+    // Client Parameters
+    $clientId = $params['clientdetails']['id'];
+    $firstname = $params['clientdetails']['firstname'];
+    $lastname = $params['clientdetails']['lastname'];
+    $email = $params['clientdetails']['email'];
+    $postcode = $params['clientdetails']['postcode'];
+    $phone = $params['clientdetails']['phonenumber'];
+
+    // System Parameters
+    $companyName = $params['companyname'];
+    $systemUrl = $params['systemurl'];
+    $returnUrl = $params['returnurl'];
+    $langPayNow = $params['langpaynow'];
+    $moduleDisplayName = $params['name'];
+    $moduleName = $params['paymentmethod'];
+    $whmcsVersion = $params['whmcsVersion'];
+
+    $url = '';
+    //switch modes
+    if($params['testMode'] == 'on') { //testmode
+        $url = 'https://preprod.paymeservice.com/api/generate-sale';
+    } 
+    else 
+    { // live mode
+        $url = 'https://ng.paymeservice.com/api/generate-sale';
+    }
+
+    $data->seller_payme_id = $sellerID;
+    $data->sale_price = $amount*100;
+    $data->currency = $currencyCode;
+    $data->product_name = $description;
+    $data->installments = 1;
+    $data->sale_callback_url = $systemUrl . 'modules/gateways/callback/payme.php';
+    $data->capture_buyer = 1;
+    $data->language = $langPayMe;
+    $data->transaction_id = $invoiceId;
+    $jsonData = json_encode($data);
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+    curl_setopt($ch, CURLOPT_HEADER, FALSE);        
+    curl_setopt($ch, CURLOPT_POST, TRUE);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
+    
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+      "Content-Type: application/json"
+    ));
+    
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    $responseData = json_decode($response);
+
+    if ($responseData->status_code == 0){
+
+        return '<form method="GET" action="'.$responseData->sale_url.'?first_name='.$firstname.'&last_name='.$lastname.'&phone='.$phone.'&email='.$email.'&zip_code='.$postcode.'"> 
+        <noscript>
+            <input type="submit" value="Click here to continue &raquo;">
+        </noscript>
+        </form>';    
+    }
+    else{
+        return '<form method="GET" action="https://debug.imarslan.com/helper.php"> 
+        <input type="hidden" name="data" value="Error:'. $responseData->status_error_details .', Code: '. $responseData->status_error_code .'" />
+        </form>';    
+    }
 }
 /**
  * Admin status message.
