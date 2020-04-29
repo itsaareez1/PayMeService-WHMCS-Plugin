@@ -99,7 +99,6 @@ function payme_config()
         ),
     );
 }
-
 /**
  * Capture payment.
  *
@@ -116,6 +115,7 @@ function payme_config()
  */
 function payme_capture($params)
 {
+    $url = '';
     // Gateway Configuration Parameters
     $sellerID = $params['seller_payme_id'];
     $langPayMe = $params['langpayme'];
@@ -210,35 +210,30 @@ function payme_capture($params)
     }
     else
     {
-        $postfields = [
-            'seller_payme_id' => $sellerID,
-            'sale_price' => $amount,
-            'currency' => $currencyCode,
-            'installments' => 1,
-            'product_name' => $description,
-            'sale_email' => $email,
-            'sale_mobile' => $phone,
-            'sale_name' => $description,
-            'capture_buyer' => 1,
-            'buyer_perform_validation' => true,
-            'language' => $langPayMe,
-            'sale_return_url' => $systemUrl . '/modules/gateways/callback/' . $moduleName . '.php',
-    
-        ];    
-        
+        $data->seller_payme_id = $sellerID;
+        $data->sale_price = $amount;
+        $data->currency = $currencyCode;
+        $data->product_name = $description;
+        $data->transaction_id = $transid;
+        $data->installments = 1;
+        $data->sale_return_url = $sale_return_url;
+        $data->capture_buyer = 1;
+        $jsonData = json_encode($data);
+
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
-        curl_setopt($ch, CURLOPT_HEADER, FALSE);
+        curl_setopt($ch, CURLOPT_HEADER, FALSE);        
         curl_setopt($ch, CURLOPT_POST, TRUE);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postfields));
-    
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
+        
         curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-            "Content-Type: application/json"
-          ));
+          "Content-Type: application/json"
+        ));
+        
         $response = curl_exec($ch);
         curl_close($ch);
-    
+
         $responseData = json_decode($response);
     
     
@@ -252,8 +247,6 @@ function payme_capture($params)
                     'rawdata' => $responseData,
                     // Unique Transaction ID for the capture transaction
                     'transid' => $responseData->transaction_id,
-                    // Optional fee amount for the fee value refunded
-                    'fee' => $responseData->price/100,
                     //token returned by payment gateway
                     'gatewayid' => $responseData->buyer_key
                 ];    
@@ -263,93 +256,12 @@ function payme_capture($params)
                 // 'success' if successful, otherwise 'declined', 'error' for failure
                 'status' => 'declined',
                 // When not successful, a specific decline reason can be logged in the Transaction History
-                'declinereason' => 'Credit card declined. Please contact issuer.',
+                'declinereason' => $responseData->status_error_details,
                 // Data to be recorded in the gateway log - can be a string or array
                 'rawdata' => $responseData,
             ];
         }
     
     }
-
-    // perform API call to capture payment and interpret result
-
     return $returnData;
-}
-/**
- * Refund transaction.
- *
- * Called when a refund is requested for a previously successful transaction.
- *
- * @param array $params Payment Gateway Module Parameters
- *
- * @see https://developers.whmcs.com/payment-gateways/refunds/
- *
- * @return array Transaction response status
- */
-function payme_refund($params)
-{
-    // Gateway Configuration Parameters
-    $sellerID = $params['seller_payme_id'];
-    $langPayMe = $params['langpayme'];
-    $testMode = $params['testMode'];
-
-    // Transaction Parameters
-    $transactionIdToRefund = $params['transid'];
-    $refundAmount = $params['amount'];
-    $currencyCode = $params['currency'];
-
-    // Client Parameters
-    $firstname = $params['clientdetails']['firstname'];
-    $lastname = $params['clientdetails']['lastname'];
-    $email = $params['clientdetails']['email'];
-    $address1 = $params['clientdetails']['address1'];
-    $address2 = $params['clientdetails']['address2'];
-    $city = $params['clientdetails']['city'];
-    $state = $params['clientdetails']['state'];
-    $postcode = $params['clientdetails']['postcode'];
-    $country = $params['clientdetails']['country'];
-    $phone = $params['clientdetails']['phonenumber'];
-
-    // System Parameters
-    $companyName = $params['companyname'];
-    $systemUrl = $params['systemurl'];
-    $langPayNow = $params['langpaynow'];
-    $moduleDisplayName = $params['name'];
-    $moduleName = $params['paymentmethod'];
-    $whmcsVersion = $params['whmcsVersion'];
-
-        //switch modes
-    if($params['testMode'] == 'on') { //testmode
-        $url = 'https://preprod.paymeservice.com/api/generate-sale';
-    } 
-    else 
-    { // live mode
-        $url = 'https://ng.paymeservice.com/api/generate-sale';
-    }    
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
-    curl_setopt($ch, CURLOPT_HEADER, FALSE);
-    curl_setopt($ch, CURLOPT_POST, TRUE);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postfields));
-
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-        "Content-Type: application/json"
-      ));
-    $response = curl_exec($ch);
-    curl_close($ch);
-
-    $data = json_decode($response);
-
-    return array(
-        // 'success' if successful, otherwise 'declined', 'error' for failure
-        'status' => 'success',
-        // Data to be recorded in the gateway log - can be a string or array
-        'rawdata' => $responseData,
-        // Unique Transaction ID for the refund transaction
-        'transid' => $refundTransactionId,
-        // Optional fee amount for the fee value refunded
-        'fees' => $feeAmount,
-    );
 }
