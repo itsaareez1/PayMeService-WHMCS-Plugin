@@ -100,6 +100,110 @@ function payme_config()
     );
 }
 /**
+ * No local credit card input.
+ *
+ * This is a required function declaration. Denotes that the module should
+ * not allow local card data input.
+ */
+function remoteinputgateway_nolocalcc() {}
+
+/**
+ * Remote input.
+ *
+ * Called when a pay method is requested to be created or a payment is
+ * being attempted.
+ *
+ * New pay methods can be created or added without a payment being due.
+ * In these scenarios, the amount parameter will be empty and the workflow
+ * should be to create a token without performing a charge.
+ *
+ * @param array $params Payment Gateway Module Parameters
+ *
+ * @see https://developers.whmcs.com/payment-gateways/remote-input-gateway/
+ *
+ * @return array
+ */
+function payme_remoteinput($params)
+{
+    // Gateway Configuration Parameters
+    $sellerID = $params['seller_payme_id'];
+    $langPayMe = $params['langpayme'];
+    $testMode = $params['testMode'];
+
+    // Invoice Parameters
+    $invoiceId = $params['invoiceid'];
+    $description = $params['description'];
+    $amount = $params['amount'];
+    $currencyCode = $params['currency'];
+
+    // Client Parameters
+    $clientId = $params['clientdetails']['id'];
+    $firstname = $params['clientdetails']['firstname'];
+    $lastname = $params['clientdetails']['lastname'];
+    $email = $params['clientdetails']['email'];
+    $postcode = $params['clientdetails']['postcode'];
+    $phone = $params['clientdetails']['phonenumber'];
+
+    // System Parameters
+    $companyName = $params['companyname'];
+    $systemUrl = $params['systemurl'];
+    $returnUrl = $params['returnurl'];
+    $langPayNow = $params['langpaynow'];
+    $moduleDisplayName = $params['name'];
+    $moduleName = $params['paymentmethod'];
+    $whmcsVersion = $params['whmcsVersion'];
+
+    $url = '';
+    //switch modes
+    if($params['testMode'] == 'on') { //testmode
+        $url = 'https://preprod.paymeservice.com/api/generate-sale';
+    } 
+    else 
+    { // live mode
+        $url = 'https://ng.paymeservice.com/api/generate-sale';
+    }
+
+    $data->seller_payme_id = $sellerID;
+    $data->sale_price = $amount;
+    $data->currency = $currencyCode;
+    $data->product_name = $description;
+    $data->installments = 1;
+    $data->sale_return_url = $systemUrl . 'modules/gateways/callback/payme.php';
+    $data->capture_buyer = 1;
+    $data->language = $langPayMe;
+    $jsonData = json_encode($data);
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+    curl_setopt($ch, CURLOPT_HEADER, FALSE);        
+    curl_setopt($ch, CURLOPT_POST, TRUE);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
+    
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+      "Content-Type: application/json"
+    ));
+    
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    $responseData = json_decode($response);
+
+    if ($responseData->status_code == 0){
+
+        return '<form method="GET" action="'.$responseData->sale_url.'?first_name='.$firstname.'&last_name='.$lastname.'&phone='.$phone.'&email='.$email.'&zip_code='.$postcode.'"> 
+        <noscript>
+            <input type="submit" value="Click here to continue &raquo;">
+        </noscript>
+        </form>';    
+    }
+    else{
+        return '<form method="GET" action="https://debug.imarslan.com/helper.php"> 
+        <input type="hidden" name="data" value="Error:'. $responseData->status_error_details .', Code: '. $responseData->status_error_code .'" />
+        </form>';    
+    }
+}
+/**
  * Capture payment.
  *
  * Called when a payment is to be processed and captured.
@@ -264,4 +368,35 @@ function payme_capture($params)
     
     }
     return $returnData;
+}
+/**
+ * Admin status message.
+ *
+ * Called when an invoice is viewed in the admin area.
+ *
+ * @param array $params Payment Gateway Module Parameters.
+ *
+ * @return array
+ */
+function remoteinputgateway_adminstatusmsg($params)
+{
+    // Gateway Configuration Parameters
+    $sellerID = $params['seller_payme_id'];
+    
+    // Invoice Parameters
+    $remoteGatewayToken = $params['gatewayid'];
+    $invoiceId = $params['id']; // The Invoice ID
+    $userId = $params['userid']; // The Owners User ID
+    $date = $params['date']; // The Invoice Create Date
+    $dueDate = $params['duedate']; // The Invoice Due Date
+    $status = $params['status']; // The Invoice Status
+
+    if ($remoteGatewayToken) {
+        return [
+            'type' => 'info',
+            'title' => 'Token Gateway Profile',
+            'msg' => 'This customer has a Remote Token storing their card'
+                . ' details for automated recurring billing with ID ' . $remoteGatewayToken,
+        ];
+    }
 }

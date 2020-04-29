@@ -34,15 +34,31 @@ if (!$gatewayParams['type']) {
 }
 
 // Retrieve data returned in payment gateway callback
-// Varies per payment gateway
-$success = $_POST["x_status"];
-$invoiceId = $_POST["x_invoice_id"];
-$transactionId = $_POST["x_trans_id"];
-$paymentAmount = $_POST["x_amount"];
-$paymentFee = $_POST["x_fee"];
-$hash = $_POST["x_hash"];
 
-$transactionStatus = $success ? 'Success' : 'Failure';
+
+// Retrieve data returned in redirect
+$success = isset($_REQUEST['status_code']) ? $_REQUEST['status_code'] : '';
+$transactionId = isset($_REQUEST['transaction_id']) ? $_REQUEST['transaction_id'] : '';
+$currencyCode = isset($_REQUEST['currency']) ? $_REQUEST['currency'] : '';
+$amount = isset($_REQUEST['price']) ? $_REQUEST['price'] : '';
+$buyer_key = isset($_REQUEST['buyer_key']) ? $_REQUEST['buyer_key'] : '';
+$cardLastFour = isset($_REQUEST['card_last_four']) ? $_REQUEST['card_last_four'] : '';
+$cardType = isset($_REQUEST['card_type']) ? $_REQUEST['card_type'] : '';
+$cardExpiryDate = isset($_REQUEST['card_expiry_date']) ? $_REQUEST['card_expiry_date'] : '';
+$cardToken = isset($_REQUEST['card_token']) ? $_REQUEST['card_token'] : '';
+$verificationHash = isset($_REQUEST['verification_hash']) ? $_REQUEST['verification_hash'] : '';
+$payMethodId = isset($_REQUEST['custom_reference']) ? (int) $_REQUEST['custom_reference'] : 0;
+
+
+// // Varies per payment gateway
+// $success = $_POST["x_status"];
+// $invoiceId = $_POST["x_invoice_id"];
+// $transactionId = $_POST["x_trans_id"];
+// $paymentAmount = $_POST["x_amount"];
+// $paymentFee = $_POST["x_fee"];
+// $hash = $_POST["x_hash"];
+
+// $transactionStatus = $success ? 'Success' : 'Failure';
 
 /**
  * Validate callback authenticity.
