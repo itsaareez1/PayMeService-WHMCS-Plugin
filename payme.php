@@ -125,6 +125,7 @@ function remoteinputgateway_nolocalcc() {}
  */
 function payme_remoteinput($params)
 {
+
     // Gateway Configuration Parameters
     $sellerID = $params['seller_payme_id'];
     $langPayMe = $params['langpayme'];

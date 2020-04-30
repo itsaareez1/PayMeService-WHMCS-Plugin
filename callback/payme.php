@@ -42,8 +42,8 @@ if (!$gatewayParams['type']) {
 $clientID = $_SESSION['uid'];
 
 $success = isset($_REQUEST['status_code']) ? $_REQUEST['status_code'] : '';
-$transactionId = isset($_REQUEST['transaction_id']) ? $_REQUEST['transaction_id'] : '';
-$invoiceId = $transactionId;
+$transactionId = isset($_REQUEST['payme_transaction_id']) ? $_REQUEST['payme_transaction_id'] : '';
+$invoiceId = isset($_REQUEST['transaction_id']) ? $_REQUEST['transaction_id'] : '';
 $currencyCode = isset($_REQUEST['currency']) ? $_REQUEST['currency'] : '';
 $am = isset($_REQUEST['price']) ? $_REQUEST['price'] : '';
 $amount = $am/100;
@@ -51,6 +51,7 @@ $buyer_key = isset($_REQUEST['buyer_key']) ? $_REQUEST['buyer_key'] : '';
 $buyer_card_mask = isset($_REQUEST['buyer_card_mask']) ? $_REQUEST['buyer_card_mask'] : '';
 $buyer_card_exp = isset($_REQUEST['buyer_card_exp']) ? $_REQUEST['buyer_card_exp'] : '';
 $cardType = isset($_REQUEST['payme_transaction_card_brand']) ? $_REQUEST['payme_transaction_card_brand'] : '';
+
 /**
  * Validate callback authenticity.
  *
@@ -69,6 +70,7 @@ $cardType = isset($_REQUEST['payme_transaction_card_brand']) ? $_REQUEST['payme_
  *
  * Checks invoice ID is a valid invoice number. Note it will count an
  * invoice in any status as valid.
+
  *
  * Performs a die upon encountering an invalid Invoice ID.
  *
@@ -110,6 +112,7 @@ if ($success == 0) {
 
     logTransaction($gatewayParams['payme'], $_REQUEST, "Success");
     invoiceSaveRemoteCard($invoiceId, substr($buyer_card_mask, -4), $cardType, $buyer_card_exp, $buyer_key);
+    logModuleCall('payme', 'getinvoice', 'getinvoice', $results, '', array('' => ''));
     addInvoicePayment($invoiceId, $transactionId, $amount, 'payme');
     callback3DSecureRedirect($invoiceId, true);
 }
