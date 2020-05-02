@@ -1,29 +1,9 @@
 <?php
 /**
- * WHMCS Sample Payment Gateway Module
- *
- * Payment Gateway modules allow you to integrate payment solutions with the
- * WHMCS platform.
- *
- * This sample file demonstrates how a payment gateway module for WHMCS should
- * be structured and all supported functionality it can contain.
- *
- * Within the module itself, all functions must be prefixed with the module
- * filename, followed by an underscore, and then the function name. For this
- * example file, the filename is "payme" and therefore all functions
- * begin "payme_".
- *
- * If your module or third party API does not support a given function, you
- * should not define that function within your module. Only the _config
- * function is required.
- *
- * For more information, please refer to the online documentation.
- *
- * @see https://developers.whmcs.com/payment-gateways/
- *
- * @copyright Copyright (c) WHMCS Limited 2017
- * @license http://www.whmcs.com/license/ WHMCS Eula
+ * Author: Arslan ud Din Shafiq
+ * Software Company: WebSoft IT Development Solutions (Private) Limited
  */
+
 
 if (!defined("WHMCS")) {
     die("This file cannot be accessed directly");
@@ -107,6 +87,135 @@ function payme_config()
  */
 function remoteinputgateway_nolocalcc() {}
 
+/**
+ * Capture payment.
+ *
+ * Called when a payment is to be processed and captured.
+ *
+ * The card cvv number will only be present for the initial card holder present
+ * transactions. Automated recurring capture attempts will not provide it.
+ *
+ * @param array $params Payment Gateway Module Parameters
+ *
+ * @see https://developers.whmcs.com/payment-gateways/merchant-gateway/
+ *
+ * @return array Transaction response status
+ */
+function payme_capture($params)
+{
+    $url = '';
+    // Gateway Configuration Parameters
+    $sellerID = $params['seller_payme_id'];
+    $langPayMe = $params['langpayme'];
+    $testMode = $params['testMode'];
+    
+
+    // Invoice Parameters
+    $invoiceId = $params['invoiceid'];
+    $description = $params["description"];
+    $amount = $params['amount'];
+    $currencyCode = $params['currency'];
+
+    // Credit Card Parameters
+    $cardType = $params['cardtype'];
+    $cardNumber = $params['cardnum'];
+    $cardExpiry = $params['cardexp'];
+    $cardStart = $params['cardstart'];
+    $cardIssueNumber = $params['cardissuenum'];
+    $cardCvv = $params['cccvv'];
+
+    // Client Parameters
+    $firstname = $params['clientdetails']['firstname'];
+    $lastname = $params['clientdetails']['lastname'];
+    $email = $params['clientdetails']['email'];
+    $address1 = $params['clientdetails']['address1'];
+    $address2 = $params['clientdetails']['address2'];
+    $city = $params['clientdetails']['city'];
+    $state = $params['clientdetails']['state'];
+    $postcode = $params['clientdetails']['postcode'];
+    $country = $params['clientdetails']['country'];
+    $phone = $params['clientdetails']['phonenumber'];
+
+    // System Parameters
+    $companyName = $params['companyname'];
+    $systemUrl = $params['systemurl'];
+    $returnUrl = $params['returnurl'];
+    $langPayNow = $params['langpaynow'];
+    $moduleDisplayName = $params['name'];
+    $moduleName = $params['paymentmethod'];
+    $whmcsVersion = $params['whmcsVersion'];
+    
+    //switch modes
+    if($params['testMode'] == 'on') { //testmode
+        $url = 'https://preprod.paymeservice.com/api/generate-sale';
+    } 
+    else 
+    { // live mode
+        $url = 'https://ng.paymeservice.com/api/generate-sale';
+    }
+
+
+    $gatewayid = $params['gatewayid'];
+
+    if ($gatewayid != ""){
+
+        $dat->seller_payme_id = $sellerID;
+        $dat->sale_price = $amount*100;
+        $dat->currency = $currencyCode;
+        $dat->product_name = $description;
+        $dat->installments = 1;
+        $dat->sale_callback_url = $systemUrl . 'modules/gateways/callback/payme.php';
+        $dat->language = $langPayMe;
+        $dat->buyer_key = $gatewayid;
+        $dat->transaction_id = $invoiceId;
+        $jsonDat = json_encode($dat);
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+        curl_setopt($ch, CURLOPT_HEADER, FALSE);        
+        curl_setopt($ch, CURLOPT_POST, TRUE);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonDat);
+        
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+          "Content-Type: application/json"
+        ));
+        
+        $response = curl_exec($ch);
+        curl_close($ch);
+    
+        $responseData = json_decode($response);
+        
+        if ($responseData->status_code == 0 && $responseData->sale_status == "completed") {
+            
+            return [
+                // 'success' if successful, otherwise 'declined', 'error' for failure
+                'status' => 'success',
+                // The unique transaction id for the payment
+                'transid' => $responseData->payme_transaction_id,
+                // Data to be recorded in the gateway log - can be a string or array
+                'rawdata' => $response . 'Invoice:' . $invoiceId,
+            ];
+        }
+        else{
+
+            return [
+                // 'success' if successful, otherwise 'declined', 'error' for failure
+                'status' => 'declined',
+                // For declines, a decline reason can optionally be returned
+                'declinereason' => $response['decline_reason'],
+                // Data to be recorded in the gateway log - can be a string or array
+                'rawdata' => $responseData,
+            ];
+        }
+    }
+    else{
+        return [
+            'status' => 'declined',
+            'decline_message' => 'No Remote Token',
+        ];
+    }
+}
 /**
  * Remote input.
  *
@@ -206,134 +315,6 @@ function payme_remoteinput($params)
     }
 }
 /**
- * Capture payment.
- *
- * Called when a payment is to be processed and captured.
- *
- * The card cvv number will only be present for the initial card holder present
- * transactions. Automated recurring capture attempts will not provide it.
- *
- * @param array $params Payment Gateway Module Parameters
- *
- * @see https://developers.whmcs.com/payment-gateways/merchant-gateway/
- *
- * @return array Transaction response status
- */
-function payme_capture($params)
-{
-    $url = '';
-    // Gateway Configuration Parameters
-    $sellerID = $params['seller_payme_id'];
-    $langPayMe = $params['langpayme'];
-    $testMode = $params['testMode'];
-    
-
-    // Invoice Parameters
-    $invoiceId = $params['invoiceid'];
-    $description = $params["description"];
-    $amount = $params['amount'];
-    $currencyCode = $params['currency'];
-
-    // Credit Card Parameters
-    $cardType = $params['cardtype'];
-    $cardNumber = $params['cardnum'];
-    $cardExpiry = $params['cardexp'];
-    $cardStart = $params['cardstart'];
-    $cardIssueNumber = $params['cardissuenum'];
-    $cardCvv = $params['cccvv'];
-
-    // Client Parameters
-    $firstname = $params['clientdetails']['firstname'];
-    $lastname = $params['clientdetails']['lastname'];
-    $email = $params['clientdetails']['email'];
-    $address1 = $params['clientdetails']['address1'];
-    $address2 = $params['clientdetails']['address2'];
-    $city = $params['clientdetails']['city'];
-    $state = $params['clientdetails']['state'];
-    $postcode = $params['clientdetails']['postcode'];
-    $country = $params['clientdetails']['country'];
-    $phone = $params['clientdetails']['phonenumber'];
-
-    // System Parameters
-    $companyName = $params['companyname'];
-    $systemUrl = $params['systemurl'];
-    $returnUrl = $params['returnurl'];
-    $langPayNow = $params['langpaynow'];
-    $moduleDisplayName = $params['name'];
-    $moduleName = $params['paymentmethod'];
-    $whmcsVersion = $params['whmcsVersion'];
-    
-    //switch modes
-    if($params['testMode'] == 'on') { //testmode
-        $url = 'https://preprod.paymeservice.com/api/generate-sale';
-    } 
-    else 
-    { // live mode
-        $url = 'https://ng.paymeservice.com/api/generate-sale';
-    }
-
-    $gatewayid = $params['gatewayid'];
-
-    if ($gatewayid != ""){
-
-        $dat->seller_payme_id = $sellerID;
-        $dat->sale_price = $amount*100;
-        $dat->currency = $currencyCode;
-        $dat->product_name = $description;
-        $dat->installments = 1;
-        $data->sale_callback_url = $systemUrl . 'modules/gateways/callback/payme.php';
-        $dat->language = $langPayMe;
-        $dat->buyer_key = $gatewayid;
-        $data->transaction_id = $invoiceId;
-        $jsonDat = json_encode($dat);
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
-        curl_setopt($ch, CURLOPT_HEADER, FALSE);        
-        curl_setopt($ch, CURLOPT_POST, TRUE);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonDat);
-        
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-          "Content-Type: application/json"
-        ));
-        
-        $response = curl_exec($ch);
-        curl_close($ch);
-    
-        $responseData = json_decode($response);
-
-        if ($responseData->status_code == 0) {
-            return [
-                // 'success' if successful, otherwise 'declined', 'error' for failure
-                'status' => 'success',
-                // The unique transaction id for the payment
-                'transid' => $response['transaction_id'],
-                // Data to be recorded in the gateway log - can be a string or array
-                'rawdata' => $response,
-            ];
-        }
-        else{
-
-            return [
-                // 'success' if successful, otherwise 'declined', 'error' for failure
-                'status' => 'declined',
-                // For declines, a decline reason can optionally be returned
-                'declinereason' => $response['decline_reason'],
-                // Data to be recorded in the gateway log - can be a string or array
-                'rawdata' => $response,
-            ];
-        }
-    }
-    else{
-        return [
-            'status' => 'declined',
-            'decline_message' => 'No Remote Token',
-        ];
-    }
-}
-
-/**
  * Remote update.
  *
  * Called when a pay method is requested to be updated.
@@ -419,7 +400,6 @@ function payme_remoteupdate($params)
     $responseData = json_decode($response);
 
     if ($responseData->status_code == 0){
-
         return '<form method="GET" action="'.$responseData->sale_url.'?first_name='.$firstname.'&last_name='.$lastname.'&phone='.$phone.'&email='.$email.'&zip_code='.$postcode.'"> 
         <noscript>
             <input type="submit" value="Click here to continue &raquo;">
