@@ -25,10 +25,7 @@ if (!$gatewayParams['type']) {
 
 
 
-
 // Retrieve data returned in redirect
-$clientID = $_SESSION['uid'];
-
 $success = isset($_POST['status_code']) ? $_POST['status_code'] : '';
 $transactionId = isset($_POST['payme_transaction_id']) ? $_POST['payme_transaction_id'] : '';
 $invoiceId = isset($_POST['transaction_id']) ? $_POST['transaction_id'] : '';
@@ -43,6 +40,17 @@ $sale_status = isset($_POST['sale_status']) ? $_POST['sale_status'] : '';
 $psale_status = isset($_POST['payme_sale_status']) ? $_POST['payme_sale_status'] : '';
 $orderid = Capsule::table('tblorders')->where('invoiceid',$invoiceId)->value('id');
 
+
+$command = 'GetInvoice';
+$postData = array(
+    'invoiceid' => $invoiceId,
+);
+
+$results = localAPI($command, $postData);
+$userID = $results['userid'];
+logModuleCall("User ID", "", "", $results, "", "");   
+
+
 if ($success == 0) {
     if ($sale_status == "completed" || $psale_status == "completed"){
         $invoiceId = checkCbInvoiceID($invoiceId, $gatewayParams['name']);
@@ -52,13 +60,53 @@ if ($success == 0) {
                 'sendemail' => true,
         );
         $results = localAPI($command, $postData);
-        logModuleCall("Success", "", "", $results, "", "");            
-        logTransaction($gatewayParams['name'], $_REQUEST, "Success");
         invoiceSaveRemoteCard($invoiceId, substr($buyer_card_mask, -4), $cardType, $buyer_card_exp, $buyer_key);
         if (!empty($buyer_key)){
             addInvoicePayment($invoiceId, $transactionId, $amount, 'payme');
         }
-        callback3DSecureRedirect($invoiceId, true);
+        callback3DSecureRedirect($invoiceId, true);        
+        // $command = 'AddPayMethod';
+        // $postData = array(
+        //     'clientid' => $userID,
+        //     'type' => 'CreditCard',
+        //     'description' => 'PayMe',
+        //     'gateway_module_name' => 'payme',
+        //     'card_number' => $buyer_card_mask,
+        //     'card_expiry' => $buyer_card_exp,
+        //     'set_as_default' => true
+        // );
+        // $results = localAPI($command, $postData);
+        // logModuleCall("AddPayMethod", "", "", $results, "", "");            
+        // logModuleCall("Gateway Name", "", "", $gatewayParams['name'], "", "");            
+
+
+        // try{
+        //     $results = createCardPayMethod(
+        //         $userID,
+        //         $gatewayParams['name'],
+        //         $buyer_card_mask,
+        //         $buyer_card_exp,
+        //         $cardType,
+        //         null,
+        //         null,
+        //         $buyer_key,
+        //         "PayMe"
+        //     );
+        //     logTransaction($gatewayParams['name'], "ClientID = ".$userID."\nGateway Name = ".$gatewayParams['name']."\nCard Number = ".$buyer_card_mask."\nExpiry = ".$buyer_card_exp."\nBuyer Key = ".$buyer_key);
+
+        // }
+        // catch (Exception $e){
+        //     logTransaction($gatewayParams['name'], $_REQUEST, $e->getMessage());
+        //     logTransaction($gatewayParams['name'], "ClientID = ".$userID."\nGateway Name = ".$gatewayParams['name']."\nCard Number = ".$buyer_card_mask."\nExpiry = ".$buyer_card_exp."\nBuyer Key = ".$buyer_key);
+        // }
+
+        // $command = 'AddInvoicePayment';
+        // $postData = array(
+        //     'invoiceid' => $invoiceId,
+        //     'transid' => $transactionId,
+        //     'gateway' => $gatewayParams['name'],
+        //     'amount' => $amount
+        // );        
     }
     else if ($sale_status == "refunded" || $sale_status == "partial-refund" || $sale_status == "chargeback"){
         $command = 'PendingOrder';
