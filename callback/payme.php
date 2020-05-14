@@ -1,7 +1,15 @@
 <?php
 /**
  * Author: Arslan ud Din Shafiq
+ * Designation: Software Engineer
+ * Author URI: https://imarslan.com
  * Software Company: WebSoft IT Development Solutions (Private) Limited
+ * Company URL1: https://itdevsols.com
+ * Company URL2: https://websoft.ltd
+ * Whatsapp1: +923466257584
+ * Whatsapp2: +923041280395
+ * WeChat: +923041280395
+ * License: GNU Affero General Public License v3.0
  */
 
 // Require libraries needed for gateway module functions.
