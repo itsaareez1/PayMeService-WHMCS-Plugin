@@ -12,7 +12,6 @@
  * License: GNU Affero General Public License v3.0
  */
 
-// Require libraries needed for gateway module functions.
 require_once __DIR__ . '/../../../init.php';
 require_once __DIR__ . '/../../../includes/gatewayfunctions.php';
 require_once __DIR__ . '/../../../includes/invoicefunctions.php';
@@ -73,48 +72,7 @@ if ($success == 0) {
             addInvoicePayment($invoiceId, $transactionId, $amount, 'payme');
         }
         callback3DSecureRedirect($invoiceId, true);        
-        // $command = 'AddPayMethod';
-        // $postData = array(
-        //     'clientid' => $userID,
-        //     'type' => 'CreditCard',
-        //     'description' => 'PayMe',
-        //     'gateway_module_name' => 'payme',
-        //     'card_number' => $buyer_card_mask,
-        //     'card_expiry' => $buyer_card_exp,
-        //     'set_as_default' => true
-        // );
-        // $results = localAPI($command, $postData);
-        // logModuleCall("AddPayMethod", "", "", $results, "", "");            
-        // logModuleCall("Gateway Name", "", "", $gatewayParams['name'], "", "");            
-
-
-        // try{
-        //     $results = createCardPayMethod(
-        //         $userID,
-        //         $gatewayParams['name'],
-        //         $buyer_card_mask,
-        //         $buyer_card_exp,
-        //         $cardType,
-        //         null,
-        //         null,
-        //         $buyer_key,
-        //         "PayMe"
-        //     );
-        //     logTransaction($gatewayParams['name'], "ClientID = ".$userID."\nGateway Name = ".$gatewayParams['name']."\nCard Number = ".$buyer_card_mask."\nExpiry = ".$buyer_card_exp."\nBuyer Key = ".$buyer_key);
-
-        // }
-        // catch (Exception $e){
-        //     logTransaction($gatewayParams['name'], $_REQUEST, $e->getMessage());
-        //     logTransaction($gatewayParams['name'], "ClientID = ".$userID."\nGateway Name = ".$gatewayParams['name']."\nCard Number = ".$buyer_card_mask."\nExpiry = ".$buyer_card_exp."\nBuyer Key = ".$buyer_key);
-        // }
-
-        // $command = 'AddInvoicePayment';
-        // $postData = array(
-        //     'invoiceid' => $invoiceId,
-        //     'transid' => $transactionId,
-        //     'gateway' => $gatewayParams['name'],
-        //     'amount' => $amount
-        // );        
+        
     }
     else if ($sale_status == "refunded" || $sale_status == "partial-refund" || $sale_status == "chargeback"){
         $command = 'PendingOrder';
