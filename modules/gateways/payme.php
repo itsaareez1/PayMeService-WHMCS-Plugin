@@ -57,6 +57,7 @@ function payme_MetaData()
  */
 function payme_config()
 {
+
     return array(
         // the friendly display name for a payment gateway should be
         // defined here for backwards compatibility
@@ -70,7 +71,7 @@ function payme_config()
             'Type' => 'password',
             'Size' => '36',
             'Default' => '',
-            'Description' => 'PayMe Seller ID',
+            'Description' => 'PayMe Seller ID - Format: XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX',
         ),
         'langpayme' => array(
             'FriendlyName' => 'Language',

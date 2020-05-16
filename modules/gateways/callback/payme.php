@@ -30,22 +30,43 @@ if (!$gatewayParams['type']) {
 
 // Retrieve data returned in payment gateway callback
 
-
-
-// Retrieve data returned in redirect
+// // Retrieve data returned in redirect
 $success = isset($_POST['status_code']) ? $_POST['status_code'] : '';
+$success = filter_var($success, FILTER_SANITIZE_NUMBER_INT);
+
 $transactionId = isset($_POST['payme_transaction_id']) ? $_POST['payme_transaction_id'] : '';
+$transactionId = filter_var($transactionId, FILTER_SANITIZE_STRING);
+
 $invoiceId = isset($_POST['transaction_id']) ? $_POST['transaction_id'] : '';
+$invoiceId = filter_var($invoiceId, FILTER_SANITIZE_STRING);
+
 $currencyCode = isset($_POST['currency']) ? $_POST['currency'] : '';
+$currencyCode = filter_var($currencyCode, FILTER_SANITIZE_STRING);
+
 $am = isset($_POST['price']) ? $_POST['price'] : '';
+$am = filter_var($am, FILTER_SANITIZE_NUMBER_FLOAT);
 $amount = $am/100;
+
 $buyer_key = isset($_POST['buyer_key']) ? $_POST['buyer_key'] : '';
+$buyer_key = filter_var($buyer_key, FILTER_SANITIZE_STRING);
+
 $buyer_card_mask = isset($_POST['buyer_card_mask']) ? $_POST['buyer_card_mask'] : '';
+$buyer_card_mask = filter_var($buyer_card_mask, FILTER_SANITIZE_STRING);
+
 $buyer_card_exp = isset($_POST['buyer_card_exp']) ? $_POST['buyer_card_exp'] : '';
+$buyer_card_exp = filter_var($buyer_card_exp, FILTER_SANITIZE_STRING);
+
 $cardType = isset($_POST['payme_transaction_card_brand']) ? $_POST['payme_transaction_card_brand'] : '';
+$cardType = filter_var($cardType, FILTER_SANITIZE_STRING);
+
 $sale_status = isset($_POST['sale_status']) ? $_POST['sale_status'] : '';
+$sale_status = filter_var($sale_status, FILTER_SANITIZE_STRING);
+
 $psale_status = isset($_POST['payme_sale_status']) ? $_POST['payme_sale_status'] : '';
+$psale_status= filter_var($psale_status, FILTER_SANITIZE_STRING);
+
 $orderid = Capsule::table('tblorders')->where('invoiceid',$invoiceId)->value('id');
+$orderid = filter_var($orderid, FILTER_SANITIZE_NUMBER_INT);
 
 
 $command = 'GetInvoice';
@@ -84,7 +105,6 @@ if ($success == 0) {
         $command = 'CancelOrder';
         $postData = array(
             'orderid' => $orderid,
-            //'cancelsub' => true,
             'noemail' => true
         );
         $results = localAPI($command, $postData);

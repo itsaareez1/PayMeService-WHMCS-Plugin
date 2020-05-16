@@ -1,17 +1,17 @@
 {
     "schema": "1.0",
     "type": "whmcs-gateways",
-    "name": "PayMe Arslan",
+    "name": "PayME",
     "license": "proprietary",
     "category": "payments",
     "description": {
-      "name": "PayMe Arslan",
-      "tagline": "PayMe Arslan is the #1 most recognised and widely used payment gateway.",
-      "long": "PayMe Arslan is the fast, easy, secure way to accept credit cards and PayPal online. Millions of users know and trust the PayPal payment solution online.",
+      "name": "PayMe",
+      "tagline": "PayMe is the #1 most recognised and widely used payment gateway.",
+      "long": "PayMe is the fast, easy, secure way to accept credit cards and PayPal online.",
       "features": [
         "Automatic recurring subscription billing",
         "Subscription management automation & one-click refunds",
-        "Integrates with PayMe Arslan Website Payments Standard"
+        "Integrates with PayMe Website Payments Standard"
       ]
     },
     "support": {
