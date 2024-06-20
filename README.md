@@ -1,6 +1,6 @@
 PayMe, also known as PayMe Service, is payment gateway for processing credit card and debit card payments.
 
-##FEATURES
+## FEATURES
 
 Supports Sandbox Testing Mode
 Supports Live Payments Mode
